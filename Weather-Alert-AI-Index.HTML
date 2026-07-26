@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Green Bay Weather Alert</title>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --text: #1c1e26;
+    --text-muted: #6b7080;
+    --border: #e2e4ea;
+    --accent: #4f6df5;
+    --accent-text: #ffffff;
+    --danger: #e0503c;
+    --danger-bg: #fdecea;
+    --ok: #1f8a4d;
+    --ok-bg: #eaf7ee;
+    --shadow: 0 1px 3px rgba(20, 22, 30, 0.08), 0 1px 2px rgba(20, 22, 30, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151b;
+      --surface: #1e2029;
+      --text: #eef0f5;
+      --text-muted: #9298a8;
+      --border: #30323d;
+      --accent: #7b93ff;
+      --accent-text: #14151b;
+      --danger: #ff7a68;
+      --danger-bg: #3a2320;
+      --ok: #59d98a;
+      --ok-bg: #17281d;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.24);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1.75rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .panel h2 {
+    font-size: 1rem;
+    margin: 0 0 1rem;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .row:last-child { margin-bottom: 0; }
+
+  .label { color: var(--text-muted); font-size: 0.85rem; }
+  .value { font-weight: 600; font-size: 0.95rem; }
+
+  .banner {
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    font-size: 0.88rem;
+    margin-top: 1rem;
+  }
+
+  .banner.alert {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+
+  .banner.ok {
+    background: var(--ok-bg);
+    color: var(--ok);
+    border: 1px solid var(--ok);
+  }
+
+  .banner ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+  }
+
+  .btn-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  button, select {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 9px;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+
+  select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--text-muted); }
+
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+  }
+
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .webhook-status {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .note {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .status-line {
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+  .status-line.error { color: var(--danger); }
+  .status-line.success { color: var(--ok); }
+
+  .loading { color: var(--text-muted); font-size: 0.9rem; }
+
+  .last-checked {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  table.outlook-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  table.outlook-table th, table.outlook-table td {
+    text-align: left;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  table.outlook-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  table.outlook-table tbody tr:last-child td { border-bottom: none; }
+
+  table.outlook-table tr.alert-row td { color: var(--danger); font-weight: 600; }
+
+  .outlook-scroll {
+    overflow-x: auto;
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 260px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+  }
+
+  .history-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.83rem;
+  }
+
+  .history-item .history-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .history-item.detected { border-color: var(--danger); }
+  .history-item.test-success { border-color: var(--ok); }
+  .history-item.test-failed { border-color: var(--danger); }
+
+  .history-empty {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Green Bay Weather Alert</h1>
+    <p class="subtitle">Tomorrow's forecast, checked against alert thresholds. Runs entirely in your browser via Open-Meteo — no server, no account.</p>
+
+    <div class="panel">
+      <h2>Tomorrow's Forecast</h2>
+      <div id="forecast-body">
+        <p class="loading">Loading forecast…</p>
+      </div>
+      <div class="btn-row" style="margin-top: 1rem;">
+        <button class="btn-ghost" id="refresh-btn">Refresh Forecast</button>
+        <select id="auto-refresh-select" title="Auto-refresh interval">
+          <option value="0">Auto-refresh: Off</option>
+          <option value="1">Every 1 minute</option>
+          <option value="5">Every 5 minutes</option>
+          <option value="15">Every 15 minutes</option>
+          <option value="30">Every 30 minutes</option>
+        </select>
+        <span class="last-checked" id="last-checked"></span>
+      </div>
+      <p class="note">Auto-refresh only runs while this tab stays open — closing it or your computer sleeping will stop it.</p>
+    </div>
+
+    <div class="panel">
+      <h2>7-Day Outlook</h2>
+      <div class="outlook-scroll">
+        <table class="outlook-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>High</th>
+              <th>Low</th>
+              <th>Rain %</th>
+              <th>Rain (in)</th>
+              <th>Snow (in)</th>
+              <th>Alert</th>
+            </tr>
+          </thead>
+          <tbody id="outlook-body">
+            <tr><td colspan="7" class="loading">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Alert History</h2>
+      <div class="history-list" id="history-list"></div>
+      <div class="btn-row">
+        <button class="btn-ghost" id="clear-history-btn">Clear History</button>
+      </div>
+      <p class="note">Logged automatically whenever a check finds a new triggered condition, and whenever you send a test alert. Stored only in this browser.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Discord Webhook (optional, for testing)</h2>
+      <p class="webhook-status" id="webhook-status">Not set.</p>
+      <input type="password" id="webhook-input" placeholder="Paste your Discord webhook URL" autocomplete="off" />
+      <div class="btn-row">
+        <button class="btn-primary" id="save-webhook-btn">Save in this browser</button>
+        <button class="btn-ghost" id="clear-webhook-btn">Clear</button>
+      </div>
+      <div class="btn-row" style="margin-top: 1rem;">
+        <button class="btn-ghost" id="send-test-btn">Send Test Alert to Discord</button>
+      </div>
+      <div id="send-status"></div>
+      <p class="note">
+        The webhook URL is saved only in this browser's local storage (never written into this HTML file, never logged to the console). Anyone with access to this browser profile could view it via developer tools, so only use this on a personal device.
+        "Send Test Alert" always posts the current forecast, even if no threshold is triggered — it's for confirming delivery works, not a real alert trigger.
+        This page does not auto-send real alerts to Discord — auto-refresh only updates the dashboard and alert history; sending is always a manual click.
+      </p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LATITUDE = 44.5133;
+  var LONGITUDE = -88.0133;
+  var TIMEZONE = "America/Chicago";
+  var LOCATION_NAME = "Green Bay, WI";
+
+  var PRECIP_PROB_THRESHOLD = 40; // percent
+  var RAIN_THRESHOLD_IN = 1.0; // inches
+  var HIGH_TEMP_THRESHOLD_F = 85;
+  var LOW_TEMP_THRESHOLD_F = 65;
+
+  var OUTLOOK_DAYS = 7; // days shown in the outlook table, starting tomorrow
+
+  var WEBHOOK_STORAGE_KEY = "weather-bot-app.discordWebhookUrl";
+  var HISTORY_STORAGE_KEY = "weather-bot-app.alertHistory";
+  var AUTO_REFRESH_STORAGE_KEY = "weather-bot-app.autoRefreshMinutes";
+  var HISTORY_MAX_ENTRIES = 50;
+
+  var forecastBody = document.getElementById("forecast-body");
+  var refreshBtn = document.getElementById("refresh-btn");
+  var autoRefreshSelect = document.getElementById("auto-refresh-select");
+  var lastCheckedEl = document.getElementById("last-checked");
+  var outlookBody = document.getElementById("outlook-body");
+  var historyListEl = document.getElementById("history-list");
+  var clearHistoryBtn = document.getElementById("clear-history-btn");
+  var webhookInput = document.getElementById("webhook-input");
+  var webhookStatus = document.getElementById("webhook-status");
+  var saveWebhookBtn = document.getElementById("save-webhook-btn");
+  var clearWebhookBtn = document.getElementById("clear-webhook-btn");
+  var sendTestBtn = document.getElementById("send-test-btn");
+  var sendStatus = document.getElementById("send-status");
+
+  var lastForecast = null;
+  var lastReasons = [];
+  var autoRefreshTimer = null;
+
+  // ---------------------------------------------------------------------
+  // Local storage helpers
+  // ---------------------------------------------------------------------
+
+  function getSavedWebhook() {
+    try {
+      return localStorage.getItem(WEBHOOK_STORAGE_KEY) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function loadHistory() {
+    try {
+      var raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function saveHistory(entries) {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX_ENTRIES)));
+    } catch (err) { /* ignore quota errors */ }
+  }
+
+  function addHistoryEntry(kind, forecastDate, reasons) {
+    var entries = loadHistory();
+    var last = entries[0];
+
+    // Avoid logging the same "detected" alert again on every auto-refresh
+    // tick while nothing has actually changed.
+    if (kind === "detected" && last && last.kind === "detected" &&
+        last.forecastDate === forecastDate &&
+        JSON.stringify(last.reasons) === JSON.stringify(reasons)) {
+      return;
+    }
+
+    entries.unshift({
+      timestamp: new Date().toISOString(),
+      kind: kind,
+      forecastDate: forecastDate,
+      reasons: reasons || [],
+    });
+    saveHistory(entries);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    var entries = loadHistory();
+    if (entries.length === 0) {
+      historyListEl.innerHTML = '<p class="history-empty">No history yet.</p>';
+      return;
+    }
+
+    historyListEl.innerHTML = entries.map(function (entry) {
+      var time = new Date(entry.timestamp).toLocaleString();
+      var title;
+      if (entry.kind === "detected") {
+        title = "Alert condition detected for " + formatDayName(entry.forecastDate);
+      } else if (entry.kind === "test-success") {
+        title = "Test alert sent to Discord";
+      } else {
+        title = "Test alert failed to send";
+      }
+
+      var detail = entry.reasons && entry.reasons.length
+        ? entry.reasons.join(" ")
+        : "";
+
+      return (
+        '<div class="history-item ' + entry.kind + '">' +
+        '<div class="history-time">' + time + "</div>" +
+        "<div>" + title + "</div>" +
+        (detail ? '<div class="label">' + detail + "</div>" : "") +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  clearHistoryBtn.addEventListener("click", function () {
+    saveHistory([]);
+    renderHistory();
+  });
+
+  function refreshWebhookStatus() {
+    var saved = getSavedWebhook();
+    webhookStatus.textContent = saved
+      ? "Saved in this browser."
+      : "Not set.";
+    sendTestBtn.disabled = !saved;
+  }
+
+  // ---------------------------------------------------------------------
+  // Forecast fetching
+  // ---------------------------------------------------------------------
+
+  function buildForecastUrl() {
+    var params = new URLSearchParams({
+      latitude: String(LATITUDE),
+      longitude: String(LONGITUDE),
+      timezone: TIMEZONE,
+      temperature_unit: "fahrenheit",
+      precipitation_unit: "inch",
+      daily: [
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "precipitation_probability_max",
+        "rain_sum",
+        "snowfall_sum",
+      ].join(","),
+      forecast_days: String(OUTLOOK_DAYS + 1), // +1 for "today" at index 0
+    });
+    return "https://api.open-meteo.com/v1/forecast?" + params.toString();
+  }
+
+  function evaluateAlert(forecast) {
+    var reasons = [];
+
+    if (forecast.precipProb >= PRECIP_PROB_THRESHOLD) {
+      reasons.push("Rain probability is at or above " + PRECIP_PROB_THRESHOLD + "%.");
+    }
+    if (forecast.rainIn > RAIN_THRESHOLD_IN) {
+      reasons.push("Rainfall is above " + RAIN_THRESHOLD_IN.toFixed(0) + " inch.");
+    }
+    if (forecast.highF >= HIGH_TEMP_THRESHOLD_F) {
+      reasons.push("High temperature is at or above " + HIGH_TEMP_THRESHOLD_F + "°F.");
+    }
+    if (forecast.lowF <= LOW_TEMP_THRESHOLD_F) {
+      reasons.push("Low temperature is at or below " + LOW_TEMP_THRESHOLD_F + "°F.");
+    }
+
+    return reasons;
+  }
+
+  function formatDayName(dateStr) {
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  function formatDayShort(dateStr) {
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  function buildDiscordMessage(forecast, reasons) {
+    var lines = [
+      "⚠️ Weather Alert — " + LOCATION_NAME,
+      "",
+      "Tomorrow: " + formatDayName(forecast.date),
+      "",
+      "🌧️ Rain chance: " + forecast.precipProb.toFixed(0) + "%",
+      "❄️ Snow: " + forecast.snowIn.toFixed(1) + " in",
+      "🌡️ High: " + forecast.highF.toFixed(0) + "°F",
+      "🌡️ Low: " + forecast.lowF.toFixed(0) + "°F",
+      "",
+    ];
+
+    if (reasons.length === 0) {
+      lines.push("(Test message — no threshold was triggered by this forecast.)");
+    } else if (reasons.length === 1) {
+      lines.push("Alert reason: " + reasons[0]);
+    } else {
+      lines.push("Alert reasons:");
+      reasons.forEach(function (r) { lines.push("- " + r); });
+    }
+
+    lines.push("", "Forecast data provided by Open-Meteo.");
+    return lines.join("\n");
+  }
+
+  function renderForecast(forecast, reasons) {
+    var rows = [
+      ["Date", formatDayName(forecast.date)],
+      ["Rain chance", forecast.precipProb.toFixed(0) + "%"],
+      ["Rainfall", forecast.rainIn.toFixed(1) + " in"],
+      ["Snowfall", forecast.snowIn.toFixed(1) + " in"],
+      ["High", forecast.highF.toFixed(0) + "°F"],
+      ["Low", forecast.lowF.toFixed(0) + "°F"],
+    ];
+
+    var html = rows.map(function (r) {
+      return '<div class="row"><span class="label">' + r[0] + '</span><span class="value">' + r[1] + "</span></div>";
+    }).join("");
+
+    if (reasons.length === 0) {
+      html += '<div class="banner ok">No alert needed — nothing crossed a threshold.</div>';
+    } else {
+      var items = reasons.map(function (r) { return "<li>" + r + "</li>"; }).join("");
+      html += '<div class="banner alert">Alert conditions triggered:<ul>' + items + "</ul></div>";
+    }
+
+    forecastBody.innerHTML = html;
+  }
+
+  function renderOutlook(days) {
+    if (!days.length) {
+      outlookBody.innerHTML = '<tr><td colspan="7" class="label">No outlook data.</td></tr>';
+      return;
+    }
+
+    outlookBody.innerHTML = days.map(function (day) {
+      var rowClass = day.reasons.length ? "alert-row" : "";
+      var alertCell = day.reasons.length
+        ? "⚠️ " + day.reasons.length + (day.reasons.length === 1 ? " reason" : " reasons")
+        : "—";
+      return (
+        "<tr class=\"" + rowClass + "\" title=\"" + day.reasons.join(" ").replace(/"/g, "&quot;") + "\">" +
+        "<td>" + formatDayShort(day.date) + "</td>" +
+        "<td>" + day.highF.toFixed(0) + "°F</td>" +
+        "<td>" + day.lowF.toFixed(0) + "°F</td>" +
+        "<td>" + day.precipProb.toFixed(0) + "%</td>" +
+        "<td>" + day.rainIn.toFixed(1) + "</td>" +
+        "<td>" + day.snowIn.toFixed(1) + "</td>" +
+        "<td>" + alertCell + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+  }
+
+  function renderError(message) {
+    forecastBody.innerHTML = '<p class="status-line error">' + message + "</p>";
+    outlookBody.innerHTML = '<tr><td colspan="7" class="status-line error">' + message + "</td></tr>";
+  }
+
+  function updateLastChecked() {
+    lastCheckedEl.textContent = "Last checked: " + new Date().toLocaleTimeString();
+  }
+
+  function loadForecast() {
+    forecastBody.innerHTML = '<p class="loading">Loading forecast…</p>';
+    outlookBody.innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
+    lastForecast = null;
+    lastReasons = [];
+
+    fetch(buildForecastUrl())
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Open-Meteo returned HTTP " + response.status + ".");
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        var daily = payload && payload.daily;
+        var neededLength = OUTLOOK_DAYS + 1;
+        if (!daily || !Array.isArray(daily.time) || daily.time.length < neededLength) {
+          throw new Error("Forecast response did not include enough daily data.");
+        }
+
+        var fields = [
+          "temperature_2m_max",
+          "temperature_2m_min",
+          "precipitation_probability_max",
+          "rain_sum",
+          "snowfall_sum",
+        ];
+        for (var i = 0; i < fields.length; i++) {
+          var series = daily[fields[i]];
+          if (!Array.isArray(series) || series.length < neededLength) {
+            throw new Error("Forecast response is missing '" + fields[i] + "'.");
+          }
+        }
+
+        function dayAt(index) {
+          return {
+            date: daily.time[index],
+            highF: daily.temperature_2m_max[index],
+            lowF: daily.temperature_2m_min[index],
+            precipProb: daily.precipitation_probability_max[index],
+            rainIn: daily.rain_sum[index],
+            snowIn: daily.snowfall_sum[index],
+          };
+        }
+
+        // "Today" is index 0 in the requested timezone; tomorrow is index 1.
+        var tomorrow = dayAt(1);
+        tomorrow.reasons = evaluateAlert(tomorrow);
+
+        var outlookDays = [];
+        for (var d = 1; d <= OUTLOOK_DAYS; d++) {
+          var day = dayAt(d);
+          day.reasons = evaluateAlert(day);
+          outlookDays.push(day);
+        }
+
+        lastForecast = tomorrow;
+        lastReasons = tomorrow.reasons;
+
+        renderForecast(tomorrow, tomorrow.reasons);
+        renderOutlook(outlookDays);
+        updateLastChecked();
+
+        if (tomorrow.reasons.length > 0) {
+          addHistoryEntry("detected", tomorrow.date, tomorrow.reasons);
+        }
+      })
+      .catch(function (err) {
+        renderError("Could not load forecast: " + err.message);
+      });
+  }
+
+  // ---------------------------------------------------------------------
+  // Auto-refresh
+  // ---------------------------------------------------------------------
+
+  function getSavedAutoRefreshMinutes() {
+    try {
+      var raw = localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
+      var n = parseInt(raw, 10);
+      return isNaN(n) ? 0 : n;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function applyAutoRefresh(minutes) {
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+    if (minutes > 0) {
+      autoRefreshTimer = setInterval(loadForecast, minutes * 60 * 1000);
+    }
+  }
+
+  autoRefreshSelect.addEventListener("change", function () {
+    var minutes = parseInt(autoRefreshSelect.value, 10) || 0;
+    try {
+      localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(minutes));
+    } catch (err) { /* ignore */ }
+    applyAutoRefresh(minutes);
+  });
+
+  refreshBtn.addEventListener("click", loadForecast);
+
+  // ---------------------------------------------------------------------
+  // Discord webhook
+  // ---------------------------------------------------------------------
+
+  saveWebhookBtn.addEventListener("click", function () {
+    var value = webhookInput.value.trim();
+    if (!value) {
+      sendStatus.innerHTML = '<p class="status-line error">Enter a webhook URL before saving.</p>';
+      return;
+    }
+    try {
+      localStorage.setItem(WEBHOOK_STORAGE_KEY, value);
+      webhookInput.value = "";
+      sendStatus.innerHTML = '<p class="status-line success">Webhook saved in this browser.</p>';
+    } catch (err) {
+      sendStatus.innerHTML = '<p class="status-line error">Could not save webhook (local storage unavailable).</p>';
+    }
+    refreshWebhookStatus();
+  });
+
+  clearWebhookBtn.addEventListener("click", function () {
+    try {
+      localStorage.removeItem(WEBHOOK_STORAGE_KEY);
+    } catch (err) { /* ignore */ }
+    sendStatus.innerHTML = '<p class="status-line success">Webhook cleared.</p>';
+    refreshWebhookStatus();
+  });
+
+  sendTestBtn.addEventListener("click", function () {
+    var webhookUrl = getSavedWebhook();
+    if (!webhookUrl) {
+      sendStatus.innerHTML = '<p class="status-line error">No webhook saved yet.</p>';
+      return;
+    }
+    if (!lastForecast) {
+      sendStatus.innerHTML = '<p class="status-line error">Forecast has not loaded yet — click Refresh Forecast first.</p>';
+      return;
+    }
+
+    sendTestBtn.disabled = true;
+    sendStatus.innerHTML = '<p class="status-line">Sending…</p>';
+
+    var message = buildDiscordMessage(lastForecast, lastReasons);
+    var forecastDate = lastForecast.date;
+
+    fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: message }),
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Discord responded with HTTP " + response.status + ".");
+        }
+        sendStatus.innerHTML = '<p class="status-line success">Test alert sent to Discord.</p>';
+        addHistoryEntry("test-success", forecastDate, lastReasons);
+      })
+      .catch(function (err) {
+        // Never include the webhook URL itself in the displayed error.
+        sendStatus.innerHTML = '<p class="status-line error">Failed to send to Discord: ' + err.message + " If this is a CORS/network error, try running this file from a local web server instead of opening it directly.</p>";
+        addHistoryEntry("test-failed", forecastDate, lastReasons);
+      })
+      .finally(function () {
+        sendTestBtn.disabled = !getSavedWebhook();
+      });
+  });
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+
+  refreshWebhookStatus();
+  renderHistory();
+
+  var savedMinutes = getSavedAutoRefreshMinutes();
+  autoRefreshSelect.value = String(savedMinutes);
+  applyAutoRefresh(savedMinutes);
+
+  loadForecast();
+})();
+</script>
+</body>
+</html>
